@@ -3,7 +3,7 @@ name = "cenotaph"
 version = "0.1.0"
 description = "Record what it takes to rebuild a ripped movie library after losing it"
 authors = [{ name = "Stefan Schönberger", email = "stefan@sniner.dev" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -34,7 +34,7 @@ venv = ".venv"
 
 [tool.ruff]
 line-length = 90
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 extend-select = ["I", "UP", "SIM", "B"]

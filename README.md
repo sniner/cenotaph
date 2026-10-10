@@ -20,8 +20,8 @@ with which names, languages and flags, and it keeps the working material in
 uv tool install /path/to/cenotaph
 ```
 
-`ffprobe` must be on the PATH (`pacman -S ffmpeg`, `apt install ffmpeg`,
-`brew install ffmpeg`). cenotaph runs on Linux and macOS.
+cenotaph needs Python 3.11 or later and runs on Linux and macOS. `ffprobe` must
+be on the PATH (`pacman -S ffmpeg`, `apt install ffmpeg`, `brew install ffmpeg`).
 
 ## Usage
 
@@ -32,7 +32,7 @@ cenotaph [-n] [-j N] [-x DIR]... [--allow-missing] [-v | -q] SOURCE TARGET
 - `-n`, `--dry-run`: print the report of what would change, write nothing
 - `-j N`, `--jobs N`: titles processed in parallel (default 4)
 - `-x DIR`, `--exclude DIR`: skip this folder of SOURCE, given relative to it;
-  may be repeated
+  may be repeated (see [Settings](#settings))
 - `--allow-missing`: accept any number of titles that are gone from SOURCE
 - `-v` logs every probed file, `-q` only problems
 
@@ -41,6 +41,23 @@ SOURCE is only read, never written to. Example:
 ```
 cenotaph -x Jellyfin -x MakeMKV /mnt/nas/filmothek /mnt/backup/cenotaph
 ```
+
+## Settings
+
+The first run into a TARGET creates `TARGET/cenotaph.toml` with the folders given
+by `--exclude`:
+
+```toml
+# Folders of the source that are not recorded, relative to the source.
+exclude = ["Jellyfin", "MakeMKV"]
+```
+
+Later runs read it, so `cenotaph /mnt/nas/filmothek /mnt/backup/cenotaph` is
+enough. To change the list for good, edit the file. `--exclude` on a later run
+adds folders for that run only.
+
+A run stops if the file has an unknown setting or names a folder that does not
+exist in SOURCE.
 
 Exit code 0 means everything was recorded, 1 that some files or folders could not
 be read or copied (listed in the report), 2 that the run did not start.

@@ -7,6 +7,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from .config import CONFIG, Config, ConfigError, load_config, write_config
 from .library import find_titles
 from .probe import Probe, ffprobe
 from .record import (
@@ -116,6 +117,42 @@ def record_all(ctx: Context, titles: list[Path], jobs: int) -> list[TitleResult]
     return [results[rel] for rel in titles]
 
 
+def resolve_exclude(
+    source: Path,
+    target: Path,
+    exclude: frozenset[Path],
+    dry_run: bool,
+) -> frozenset[Path]:
+    """Combine --exclude with the target's configuration.
+
+    A target without a configuration gets one holding the folders of --exclude, so
+    later runs need no options.
+    """
+    for rel in sorted(exclude):
+        if not (source / rel).is_dir():
+            raise Refusal(f"--exclude {rel}: no such folder in the source")
+    try:
+        config = load_config(target)
+    except ConfigError as e:
+        raise Refusal(str(e)) from e
+    if config is None:
+        if not dry_run:
+            target.mkdir(exist_ok=True)
+            write_config(target, Config(exclude))
+            log.info("saved the settings of this run to %s", target / CONFIG)
+    else:
+        for rel in sorted(config.exclude):
+            if not (source / rel).is_dir():
+                raise Refusal(
+                    f"{rel}: no such folder in the source, "
+                    f"remove it from exclude in {target / CONFIG}",
+                )
+        exclude = exclude | config.exclude
+    if exclude:
+        log.info("skipping %s", ", ".join(p.as_posix() for p in sorted(exclude)))
+    return exclude
+
+
 def run(
     source: Path,
     target: Path,
@@ -129,9 +166,7 @@ def run(
     """Bring the records in target up to date with source."""
     started = datetime.datetime.now()
     check_paths(source, target)
-    for rel in sorted(exclude):
-        if not (source / rel).is_dir():
-            raise Refusal(f"--exclude {rel}: no such folder in the source")
+    exclude = resolve_exclude(source, target, exclude, dry_run)
     ctx = Context(source, target, probe, started.date().isoformat(), dry_run)
 
     log.info("step 1 of 2: looking for movie and series folders in %s", source)
@@ -160,8 +195,6 @@ def run(
         log.info(
             "no earlier records in the target: every video gets probed, which takes a while"
         )
-    if not dry_run:
-        target.mkdir(exist_ok=True)
     titles = record_all(ctx, found, jobs)
     titles += [mark_missing(ctx, rel) for rel in newly_missing]
     titles += [

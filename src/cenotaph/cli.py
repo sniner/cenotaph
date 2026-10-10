@@ -47,7 +47,10 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="append",
         default=[],
         metavar="DIR",
-        help="skip this folder of SOURCE (relative to it); may be repeated",
+        help=(
+            "skip this folder of SOURCE (relative to it); may be repeated; "
+            "the first run into TARGET saves these in TARGET/cenotaph.toml"
+        ),
     )
     parser.add_argument(
         "--allow-missing",

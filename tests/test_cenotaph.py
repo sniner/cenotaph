@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from cenotaph import record
+from cenotaph.config import CONFIG
 from cenotaph.library import find_titles
 from cenotaph.probe import Json, ProbeError
 from cenotaph.record import MANIFEST, SUMMARY
@@ -262,3 +263,27 @@ def test_real_ffprobe(tmp_path: Path) -> None:
     assert "Deutsch DD" in summary
     assert "forced" in summary
     assert "64x48, 24 fps" in summary
+
+
+def test_exclude_is_saved_on_first_run(library: Path, tmp_path: Path) -> None:
+    target = tmp_path / "dst"
+    run(library, target, probe=FakeProbe(), exclude=frozenset({Path("Series")}))
+    assert (target / CONFIG).read_text().endswith('exclude = ["Series"]\n')
+
+    result = run(library, target, probe=FakeProbe())
+    assert [t.path for t in result.titles] == [MOVIE.as_posix()]
+    assert not (target / SERIES).exists()
+
+
+def test_config_is_checked(library: Path, tmp_path: Path) -> None:
+    target = tmp_path / "dst"
+    target.mkdir()
+    (target / CONFIG).write_text('exclude = ["Seris"]\n')
+    with pytest.raises(Refusal, match="Seris: no such folder.*remove it"):
+        run(library, target, probe=FakeProbe())
+    (target / CONFIG).write_text('exlude = ["Series"]\n')
+    with pytest.raises(Refusal, match="unknown setting exlude"):
+        run(library, target, probe=FakeProbe())
+    (target / CONFIG).write_text("exclude = Series\n")
+    with pytest.raises(Refusal, match="cenotaph.toml"):
+        run(library, target, probe=FakeProbe())
